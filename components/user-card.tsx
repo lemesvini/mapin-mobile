@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  View,
-  Text,
   Image,
   TouchableOpacity,
   ActivityIndicator,
@@ -10,6 +8,12 @@ import {
 import { User } from "@/types/user";
 import { userService } from "@/services/user.service";
 import { router } from "expo-router";
+import { ThemedView } from "@/components/themed-view";
+import { ThemedText } from "@/components/themed-text";
+import { Ionicons } from "@expo/vector-icons";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAuth } from "@/contexts/auth.context";
 
 interface UserCardProps {
   user: User;
@@ -17,17 +21,23 @@ interface UserCardProps {
 }
 
 export const UserCard = ({ user, onFollowChange }: UserCardProps) => {
-  const [isFollowing, setIsFollowing] = useState(user.isFollowing || false);
-  const [followRequestStatus, setFollowRequestStatus] = useState(
-    user.followRequestStatus || null
-  );
+  const { user: currentUser } = useAuth();
+  const [isFollowing, setIsFollowing] = useState(user.isFollowing ?? false);
+  const [followRequestStatus, setFollowRequestStatus] = useState<
+    "PENDING" | "ACCEPTED" | "REJECTED" | null
+  >(user.followRequestStatus ?? null);
   const [loading, setLoading] = useState(false);
+  const mutedTextColor = useThemeColor({ light: "#666", dark: "#999" }, "icon");
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  const isOwnProfile = currentUser?.id === user.id;
 
   // Update local state when user prop changes
   useEffect(() => {
-    setIsFollowing(user.isFollowing || false);
-    setFollowRequestStatus(user.followRequestStatus || null);
-  }, [user.isFollowing, user.followRequestStatus]);
+    setIsFollowing(user.isFollowing ?? false);
+    setFollowRequestStatus(user.followRequestStatus ?? null);
+  }, [user.id, user.isFollowing, user.followRequestStatus]);
 
   const handleFollowToggle = async (e: any) => {
     e.stopPropagation(); // Prevent navigation when clicking the button
@@ -49,8 +59,6 @@ export const UserCard = ({ user, onFollowChange }: UserCardProps) => {
       } else {
         // Follow or send request
         const response = await userService.followUser(user.id);
-
-        console.log("Follow response:", response);
 
         if (response.request) {
           // Follow request sent
@@ -88,79 +96,86 @@ export const UserCard = ({ user, onFollowChange }: UserCardProps) => {
     return "Seguir";
   };
 
-  const getFollowButtonStyle = () => {
-    if (isFollowing || followRequestStatus === "PENDING") {
-      return "bg-gray-200 dark:bg-gray-700";
-    }
-    return "bg-blue-500";
-  };
-
-  const getFollowButtonTextStyle = () => {
-    if (isFollowing || followRequestStatus === "PENDING") {
-      return "text-gray-700 dark:text-gray-300";
-    }
-    return "text-white";
-  };
-
   return (
     <TouchableOpacity
       onPress={() => router.push(`/user-profile?username=${user.username}`)}
       className="flex-row items-center p-4 border-b border-black/20 dark:border-white/20"
     >
-      <View className="flex-row flex-1 items-center">
+      <ThemedView className="flex-row flex-1 items-center">
         {user.profilePictureUrl ? (
           <Image
             source={{ uri: user.profilePictureUrl }}
             className="w-12 h-12 rounded-full mr-3"
           />
         ) : (
-          <View className="w-12 h-12 rounded-full bg-gray-300 dark:bg-gray-600 mr-3 items-center justify-center">
-            <Text className="text-gray-600 dark:text-gray-400 text-lg font-bold">
-              {user.username.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          <ThemedView className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 mr-3 items-center justify-center">
+            <Ionicons name="person" size={24} color="#808080" />
+          </ThemedView>
         )}
 
-        <View className="flex-1">
-          <Text
-            className="text-base font-semibold text-gray-900 dark:text-white"
+        <ThemedView className="flex-1">
+          <ThemedText
+            type="defaultSemiBold"
+            className="text-base"
             numberOfLines={1}
           >
-            {user.username}
-          </Text>
-          <Text
-            className="text-sm text-gray-600 dark:text-gray-400"
+            @{user.username}
+          </ThemedText>
+          <ThemedText
+            className="text-sm"
+            style={{ color: mutedTextColor }}
             numberOfLines={1}
           >
             {user.fullName}
-          </Text>
-          {user.bio && (
-            <Text
-              className="text-xs text-gray-500 dark:text-gray-500 mt-1"
+          </ThemedText>
+          {/* {user.bio && (
+            <ThemedText
+              className="text-xs mt-1"
+              style={{ color: mutedTextColor }}
               numberOfLines={1}
             >
               {user.bio}
-            </Text>
-          )}
-        </View>
-      </View>
+            </ThemedText>
+          )} */}
+        </ThemedView>
+      </ThemedView>
 
-      <TouchableOpacity
-        onPress={handleFollowToggle}
-        disabled={loading}
-        activeOpacity={0.7}
-        className={`px-4 py-2 rounded-lg ${getFollowButtonStyle()} min-w-[100px] items-center`}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text
-            className={`text-sm font-semibold ${getFollowButtonTextStyle()}`}
-          >
-            {getFollowButtonText()}
-          </Text>
-        )}
-      </TouchableOpacity>
+      {!isOwnProfile && (
+        <TouchableOpacity
+          onPress={handleFollowToggle}
+          disabled={loading}
+          activeOpacity={0.7}
+          className={`hidden px-4 py-2 rounded-xl min-w-[100px] items-center ${
+            isFollowing || followRequestStatus === "PENDING"
+              ? "bg-black/20 dark:bg-white/10"
+              : "bg-blue-500"
+          }`}
+        >
+          {loading ? (
+            <ActivityIndicator
+              size="small"
+              color={
+                isFollowing || followRequestStatus === "PENDING"
+                  ? isDark
+                    ? "#fff"
+                    : "#000"
+                  : "#fff"
+              }
+            />
+          ) : (
+            <ThemedText
+              type="defaultSemiBold"
+              className={`text-sm ${
+                isFollowing || followRequestStatus === "PENDING"
+                  ? "text-black/80 dark:text-white/80"
+                  : "text-white"
+              }`}
+            >
+              {getFollowButtonText()}
+            </ThemedText>
+          )}
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 };

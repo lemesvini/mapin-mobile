@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from "react";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import {
-  View,
-  Text,
-  ScrollView,
   Image,
+  ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
+  ActivityIndicator,
   RefreshControl,
+  View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, router } from "expo-router";
@@ -16,118 +18,83 @@ import { StatusBar } from "expo-status-bar";
 import { userService } from "@/services/user.service";
 import { pinService } from "@/services/pin.service";
 import { useAuth } from "@/contexts/auth.context";
-import { User } from "@/types/user";
-import { Pin } from "@/types/pin";
+import { useQuery } from "@tanstack/react-query";
 import { PinCard } from "@/components/pin-card";
+import { Pin } from "@/types/pin";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
   const { user: currentUser } = useAuth();
-  const [user, setUser] = useState<User | null>(null);
-  const [pins, setPins] = useState<Pin[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
+  const mutedTextColor = useThemeColor({ light: "#666", dark: "#999" }, "icon");
 
   const isOwnProfile = currentUser?.username === username;
 
-  const loadUserProfile = async () => {
-    if (!username) return;
+  // Fetch user profile data
+  const {
+    data: user,
+    isLoading: isLoadingUser,
+    refetch: refetchUser,
+  } = useQuery({
+    queryKey: ["userProfile", username],
+    queryFn: async () => {
+      if (!username) throw new Error("No username");
+      const data = await userService.getUserProfile(username);
+      return data;
+    },
+    enabled: !!username,
+  });
 
-    try {
-      setLoading(true);
-      // First get user data, then get their pins using userId
-      const userData = await userService.getUserProfile(username);
-      setUser(userData);
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
 
-      // Now fetch pins using the userId
-      const userPins = await pinService.getUserPins(userData.id, { limit: 50 });
-      setPins(userPins.pins);
-    } catch (error: any) {
-      console.error("Error loading user profile:", error);
-      Alert.alert(
-        "Erro",
-        error.response?.data?.error || "Não foi possível carregar o perfil"
-      );
-      router.back();
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Fetch user pins - show all pins for now
+  const {
+    data: pinsData,
+    isLoading: isLoadingPins,
+    refetch: refetchPins,
+  } = useQuery({
+    queryKey: ["userPins", user?.id],
+    queryFn: async () => {
+      if (!user?.id) throw new Error("No user id");
+      const data = await pinService.getUserPins(user.id, { limit: 50 });
+      return data.pins || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const pins = pinsData || [];
+  const loading = isLoadingUser || isLoadingPins;
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await loadUserProfile();
-    setRefreshing(false);
+    await Promise.all([refetchUser(), refetchPins()]);
   };
-
-  useEffect(() => {
-    loadUserProfile();
-    // }, [username]);
-  }, []);
 
   const handleFollowToggle = async () => {
     if (!user) return;
 
     try {
-      setFollowLoading(true);
-
       if (user.isFollowing) {
         // Unfollow
         await userService.unfollowUser(user.id);
-        setUser({
-          ...user,
-          isFollowing: false,
-          followersCount: (user.followersCount || 0) - 1,
-          followRequestStatus: null,
-        });
+        await refetchUser();
       } else if (user.followRequestStatus === "PENDING") {
         // Cancel follow request
         await userService.cancelFollowRequest(user.id);
-        setUser({
-          ...user,
-          followRequestStatus: null,
-        });
+        await refetchUser();
       } else {
         // Follow or send request
-        const response = await userService.followUser(user.id);
-
-        console.log("Follow response:", response);
-
-        if (response.request) {
-          // Follow request sent
-          setUser({
-            ...user,
-            followRequestStatus: "PENDING",
-          });
-        } else if (response.follow) {
-          // Followed directly
-          setUser({
-            ...user,
-            isFollowing: true,
-            followersCount: (user.followersCount || 0) + 1,
-            followRequestStatus: null,
-          });
-        }
+        await userService.followUser(user.id);
+        await refetchUser();
       }
+      // Refresh pins after follow/unfollow
+      await refetchPins();
     } catch (error: any) {
       console.error("Follow error:", error);
       const errorMessage =
         error.response?.data?.error ||
         error.message ||
         "Não foi possível realizar a ação";
-
-      // If already pending/following, refresh the profile to get current state
-      if (
-        errorMessage.includes("already pending") ||
-        errorMessage.includes("already following")
-      ) {
-        await loadUserProfile();
-      } else {
-        Alert.alert("Erro", errorMessage);
-      }
-    } finally {
-      setFollowLoading(false);
+      Alert.alert("Erro", errorMessage);
     }
   };
 
@@ -137,23 +104,9 @@ export default function UserProfileScreen() {
     return "Seguir";
   };
 
-  const getFollowButtonStyle = () => {
-    if (user?.isFollowing || user?.followRequestStatus === "PENDING") {
-      return "bg-gray-200 dark:bg-gray-700";
-    }
-    return "bg-blue-500";
-  };
-
-  const getFollowButtonTextColor = () => {
-    if (user?.isFollowing || user?.followRequestStatus === "PENDING") {
-      return "text-gray-700 dark:text-gray-300";
-    }
-    return "text-white";
-  };
-
   if (loading) {
     return (
-      <View className="flex-1 bg-white dark:bg-gray-900">
+      <ThemedView className="flex-1">
         <Stack.Screen
           options={{
             headerShown: true,
@@ -162,15 +115,15 @@ export default function UserProfileScreen() {
           }}
         />
         <SafeAreaView className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#FE2C55" />
         </SafeAreaView>
-      </View>
+      </ThemedView>
     );
   }
 
   if (!user) {
     return (
-      <View className="flex-1 bg-white dark:bg-gray-900">
+      <ThemedView className="flex-1">
         <Stack.Screen
           options={{
             headerShown: true,
@@ -179,172 +132,257 @@ export default function UserProfileScreen() {
           }}
         />
         <SafeAreaView className="flex-1 items-center justify-center px-6">
-          <Ionicons name="person-outline" size={64} color="#9CA3AF" />
-          <Text className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+          <Ionicons name="person-outline" size={64} color={mutedTextColor} />
+          <ThemedText
+            type="defaultSemiBold"
+            className="mt-4 text-lg text-center"
+          >
             Usuário não encontrado
-          </Text>
+          </ThemedText>
         </SafeAreaView>
-      </View>
+      </ThemedView>
     );
   }
 
-  const StatItem = ({
-    label,
-    value,
-    onPress,
-  }: {
-    label: string;
-    value: number;
-    onPress?: () => void;
-  }) => (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={!onPress}
-      className="items-center"
-    >
-      <Text className="text-2xl font-bold text-gray-900 dark:text-white">
-        {value}
-      </Text>
-      <Text className="text-sm text-gray-600 dark:text-gray-400">{label}</Text>
-    </TouchableOpacity>
-  );
-
   return (
-    <View className="flex-1 bg-white dark:bg-gray-900">
+    <ThemedView className="flex-1">
       <StatusBar style="auto" />
       <Stack.Screen
         options={{
-          headerShown: true,
+          headerShown: false,
           title: `@${username}`,
           headerBackTitle: "Voltar",
         }}
       />
-      <ScrollView
-        className="flex-1"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Profile Header */}
-        <View className="px-4 py-6 border-b border-gray-200 dark:border-gray-700">
-          {/* Avatar and Stats */}
-          <View className="flex-row items-start mb-4">
+      <SafeAreaView edges={["top"]} className="flex-1">
+        {/* Fixed Header */}
+        <ThemedView className="px-4 py-3 mb-6 flex-row justify-start gap-2 items-center border-b border-gray-200 dark:border-gray-800">
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={mutedTextColor} />
+          </TouchableOpacity>
+          <ThemedText type="defaultSemiBold" className="text-xl">
+            @{user.username}
+          </ThemedText>
+        </ThemedView>
+
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={onRefresh} />
+          }
+        >
+          {/* Profile Header */}
+          <ThemedView className="items-center border-b border-black/20 dark:border-white/20 pb-6">
             {/* Avatar */}
             {user.profilePictureUrl ? (
               <Image
                 source={{ uri: user.profilePictureUrl }}
-                className="w-24 h-24 rounded-full mr-4"
+                className="w-28 h-28 rounded-full mb-4"
+                style={{
+                  borderWidth: 2,
+                  borderColor: isDark ? "#fff" : "#808080",
+                }}
               />
             ) : (
-              <View className="w-24 h-24 rounded-full bg-blue-500 mr-4 items-center justify-center">
-                <Text className="text-3xl font-bold text-white">
-                  {user.username.charAt(0).toUpperCase()}
-                </Text>
-              </View>
+              <ThemedView
+                className="w-28 h-28 rounded-full mb-4 items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600"
+                style={{
+                  borderWidth: 2,
+                  borderColor: isDark ? "#808080" : "#808080",
+                }}
+              >
+                <Ionicons name="person" size={48} color="#808080" />
+              </ThemedView>
             )}
 
-            {/* Stats */}
-            <View className="flex-1 flex-row justify-around pt-2">
-              <StatItem label="Pins" value={pins.length} />
-              <StatItem
-                label="Seguidores"
-                value={user.followersCount || 0}
-                onPress={() => {
-                  router.push(
-                    `/followers?userId=${user.id}&username=${user.username}`
-                  );
-                }}
-              />
-              <StatItem
-                label="Seguindo"
-                value={user.followingCount || 0}
-                onPress={() => {
+            {/* Name */}
+            <ThemedText type="defaultSemiBold" className="text-xl mb-1">
+              {user.fullName}
+            </ThemedText>
+
+            {/* Stats Row */}
+            <View className="p-2 rounded-xl flex-row items-center justify-center gap-6 mb-4 mt-3">
+              <TouchableOpacity
+                className="items-center w-24"
+                onPress={() =>
                   router.push(
                     `/following?userId=${user.id}&username=${user.username}`
-                  );
-                }}
-              />
-            </View>
-          </View>
-
-          {/* Name and Bio */}
-          <View className="mb-4">
-            <Text className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-              {user.fullName}
-            </Text>
-            {user.bio && (
-              <Text className="text-sm text-gray-700 dark:text-gray-300 leading-5">
-                {user.bio}
-              </Text>
-            )}
-            {user.instagramUsername && (
-              <Text className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Instagram: @{user.instagramUsername}
-              </Text>
-            )}
-            {user.isPrivate && (
-              <View className="flex-row items-center mt-2">
-                <Ionicons name="lock-closed" size={14} color="#9CA3AF" />
-                <Text className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                  Conta privada
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Action Buttons */}
-          {!isOwnProfile && (
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={handleFollowToggle}
-                disabled={followLoading}
-                className={`flex-1 py-3 rounded-lg items-center ${getFollowButtonStyle()}`}
+                  )
+                }
               >
-                {followLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text
-                    className={`font-semibold ${getFollowButtonTextColor()}`}
+                <ThemedText type="defaultSemiBold" className="text-lg">
+                  {user.followingCount || 0}
+                </ThemedText>
+                <ThemedText
+                  className="text-sm"
+                  style={{ color: mutedTextColor }}
+                >
+                  Seguindo
+                </ThemedText>
+              </TouchableOpacity>
+
+              <ThemedView
+                className="w-px h-4"
+                style={{ backgroundColor: mutedTextColor }}
+              />
+
+              <TouchableOpacity
+                className="items-center w-24"
+                onPress={() =>
+                  router.push(
+                    `/followers?userId=${user.id}&username=${user.username}`
+                  )
+                }
+              >
+                <ThemedText type="defaultSemiBold" className="text-lg">
+                  {user.followersCount || 0}
+                </ThemedText>
+                <ThemedText
+                  className="text-sm"
+                  style={{ color: mutedTextColor }}
+                >
+                  Seguidores
+                </ThemedText>
+              </TouchableOpacity>
+
+              <ThemedView
+                className="w-px h-4"
+                style={{ backgroundColor: mutedTextColor }}
+              />
+
+              <TouchableOpacity className="items-center w-24">
+                <ThemedText type="defaultSemiBold" className="text-lg">
+                  {pins.length}
+                </ThemedText>
+                <ThemedText
+                  className="text-sm"
+                  style={{ color: mutedTextColor }}
+                >
+                  Pins
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* Bio */}
+            {user.bio && (
+              <ThemedText className="text-sm text-center px-8 mb-3 leading-5">
+                {user.bio}
+              </ThemedText>
+            )}
+
+            {/* Instagram */}
+            {/* {user.instagramUsername && (
+              <TouchableOpacity className="flex-row items-center gap-1 mb-4">
+                <Ionicons
+                  name="logo-instagram"
+                  size={16}
+                  color={mutedTextColor}
+                />
+                <ThemedText
+                  className="text-sm"
+                  style={{ color: mutedTextColor }}
+                >
+                  @{user.instagramUsername}
+                </ThemedText>
+              </TouchableOpacity>
+            )} */}
+
+            {/* Private Account Indicator */}
+            {/* {user.isPrivate && (
+              <View className="flex-row items-center mb-4">
+                <Ionicons name="lock-closed" size={14} color={mutedTextColor} />
+                <ThemedText
+                  className="text-sm ml-1"
+                  style={{ color: mutedTextColor }}
+                >
+                  Conta privada
+                </ThemedText>
+              </View>
+            )} */}
+
+            {/* Follow Button (if not own profile) */}
+            <ThemedView className="flex-row items-center gap-1">
+              {!isOwnProfile && (
+                <TouchableOpacity
+                  onPress={handleFollowToggle}
+                  disabled={loading}
+                  className={`px-8 py-3 rounded-xl items-center ${
+                    user.isFollowing || user.followRequestStatus === "PENDING"
+                      ? "bg-black/20 dark:bg-white/10"
+                      : "bg-blue-500"
+                  }`}
+                >
+                  <ThemedText
+                    type="defaultSemiBold"
+                    className={
+                      user.isFollowing || user.followRequestStatus === "PENDING"
+                        ? "text-black/80 dark:text-white/80"
+                        : "text-white"
+                    }
                   >
                     {getFollowButtonText()}
-                  </Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity className="px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 items-center justify-center">
-                <Ionicons name="chatbubble-outline" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
 
-        {/* Pins Section */}
-        <View className="px-4 py-4">
-          <Text className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-            Pins
-          </Text>
-          {pins.length > 0 ? (
-            pins.map((pin) => (
-              <PinCard
-                key={pin.id}
-                pin={pin}
-                onPress={(pinId) => {
-                  router.push(`/(tabs)?pinId=${pinId}` as any);
-                }}
-                // onUpdate={loadUserProfile}
-              />
-            ))
-          ) : (
-            <View className="py-12 items-center">
-              <Ionicons name="map-outline" size={64} color="#9CA3AF" />
-              <Text className="mt-4 text-gray-600 dark:text-gray-400 text-center">
-                {isOwnProfile
-                  ? "Você ainda não tem pins"
-                  : `${user.username} ainda não tem pins`}
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </View>
+              {user.instagramUsername && (
+                <TouchableOpacity className="flex-row items-center gap-1 bg-black/20 dark:bg-white/10 rounded-xl p-3">
+                  <Ionicons
+                    name="logo-instagram"
+                    size={24}
+                    color={isDark ? "#fff" : "#000"}
+                  />
+                  {/* <ThemedText
+                    className="text-sm"
+                    style={{ color: mutedTextColor }}
+                  >
+                    @{user.instagramUsername}
+                  </ThemedText> */}
+                </TouchableOpacity>
+              )}
+            </ThemedView>
+          </ThemedView>
+          {/* Pins Grid */}
+          <ThemedView className="py-4 pb-8">
+            {loading ? (
+              <ThemedView className="py-12 items-center">
+                <ActivityIndicator size="large" color="#FE2C55" />
+              </ThemedView>
+            ) : pins.length > 0 ? (
+              <ThemedView>
+                {pins.map((pin: Pin) => (
+                  <PinCard
+                    key={pin.id}
+                    pin={pin}
+                    onPress={(pinId) => {
+                      router.push(`/?pinId=${pinId}` as any);
+                    }}
+                  />
+                ))}
+              </ThemedView>
+            ) : (
+              <ThemedView className="py-16 items-center px-8">
+                <Ionicons name="map-outline" size={64} color={mutedTextColor} />
+                <ThemedText
+                  type="defaultSemiBold"
+                  className="mt-4 text-center text-base"
+                >
+                  Nenhum pin ainda
+                </ThemedText>
+                <ThemedText
+                  className="mt-2 text-center text-sm"
+                  style={{ color: mutedTextColor }}
+                >
+                  {isOwnProfile
+                    ? "Seus pins aparecerão aqui quando você criá-los"
+                    : `${user.username} ainda não tem pins`}
+                </ThemedText>
+              </ThemedView>
+            )}
+          </ThemedView>
+        </ScrollView>
+      </SafeAreaView>
+    </ThemedView>
   );
 }

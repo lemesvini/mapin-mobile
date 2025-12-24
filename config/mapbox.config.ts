@@ -12,8 +12,9 @@ export const MAPBOX_CONFIG = {
 
   // Default camera settings
   DEFAULT_ZOOM: 12,
+  WORLDVIEW_ZOOM: 1, // Very low zoom for world view
   DEFAULT_COORDINATES: [-46.6333, -23.5505], // São Paulo, Brazil
 
   // Animation duration
-  ANIMATION_DURATION: 0,
+  ANIMATION_DURATION: 2000, // 2 seconds for smooth animation
 };

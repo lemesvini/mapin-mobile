@@ -92,18 +92,13 @@ export const pinService = {
   // Get pins by user (helper method)
   getUserPins: async (
     userId: string,
-    params?: { limit?: number; offset?: number }
+    params?: { limit?: number; offset?: number; isPublic?: boolean }
   ): Promise<PinsResponse> => {
     const requestParams = { authorId: userId, ...params };
-    console.log("getUserPins - userId:", userId);
-    console.log("getUserPins - request params:", JSON.stringify(requestParams));
     try {
       const response = await api.get<PinsResponse>("/pins", {
         params: requestParams,
       });
-      console.log("getUserPins - full response:", JSON.stringify(response.data, null, 2));
-      console.log("getUserPins - response status:", response.status);
-      console.log("getUserPins - pins count:", response.data.pins?.length || 0);
       return response.data;
     } catch (error: any) {
       console.error("getUserPins - error:", error);

@@ -1,5 +1,4 @@
 import { PinCard } from "@/components/pin-card";
-import { ThemedDropdown } from "@/components/themed-dropdown";
 import { ThemedView } from "@/components/themed-view";
 import { ThemedText } from "@/components/themed-text";
 import { useState, useEffect, useCallback } from "react";
@@ -23,7 +22,6 @@ export default function ExploreScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
-  const [selectedView, setSelectedView] = useState("mundo");
   const [pins, setPins] = useState<Pin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -33,51 +31,56 @@ export default function ExploreScreen() {
 
   const PINS_PER_PAGE = 20;
 
+  const loadPins = useCallback(
+    async (refresh = false, pageToLoad?: number) => {
+      try {
+        if (refresh) {
+          setPage(0);
+          setHasMore(true);
+          setIsLoading(true);
+        }
+
+        const currentPage =
+          pageToLoad !== undefined ? pageToLoad : refresh ? 0 : page;
+        const offset = currentPage * PINS_PER_PAGE;
+        const response = await pinService.getPins({
+          limit: PINS_PER_PAGE,
+          offset,
+        });
+
+        if (refresh) {
+          setPins(response.pins);
+        } else {
+          setPins((prev) => [...prev, ...response.pins]);
+        }
+
+        setHasMore(response.pins.length === PINS_PER_PAGE);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load pins");
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [page]
+  );
+
   useEffect(() => {
     // Auth token is automatically managed by AuthProvider
     loadPins(true);
-  }, [token, selectedView]);
-
-  const loadPins = async (refresh = false) => {
-    try {
-      if (refresh) {
-        setPage(0);
-        setHasMore(true);
-        setIsLoading(true);
-      }
-
-      const offset = refresh ? 0 : page * PINS_PER_PAGE;
-      const response = await pinService.getPins({
-        limit: PINS_PER_PAGE,
-        offset,
-        isPublic: selectedView === "mundo" ? true : undefined,
-      });
-
-      if (refresh) {
-        setPins(response.pins);
-      } else {
-        setPins((prev) => [...prev, ...response.pins]);
-      }
-
-      setHasMore(response.pins.length === PINS_PER_PAGE);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load pins");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+  }, [token, loadPins]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await loadPins(true);
-  }, [selectedView]);
+  }, [loadPins]);
 
   const loadMore = () => {
     if (!isLoading && hasMore) {
-      setPage((prev) => prev + 1);
-      loadPins();
+      const nextPage = page + 1;
+      setPage(nextPage);
+      loadPins(false, nextPage);
     }
   };
 
@@ -122,9 +125,7 @@ export default function ExploreScreen() {
           No pins yet
         </ThemedText>
         <ThemedText className="mt-2 text-gray-500 dark:text-gray-400 text-center px-8">
-          {selectedView === "mundo"
-            ? "Be the first to drop a pin and share your experience!"
-            : "Your friends haven't posted any pins yet"}
+          Be the first to drop a pin and share your experience!
         </ThemedText>
       </View>
     );
@@ -146,15 +147,9 @@ export default function ExploreScreen() {
   const renderHeader = () => {
     return (
       <View className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-        <ThemedDropdown
-          options={[
-            { label: "Mundo", value: "mundo" },
-            { label: "Amigos", value: "amigos" },
-          ]}
-          value={selectedView}
-          onValueChange={setSelectedView}
-          placeholder="Selecione uma opção"
-        />
+        <ThemedText type="title" className="text-xl font-bold">
+          Mapin
+        </ThemedText>
       </View>
     );
   };

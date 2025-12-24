@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from "react";
 import {
-  View,
-  Text,
   FlatList,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useLocalSearchParams, router } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { userService } from "@/services/user.service";
 import { UserCard } from "@/components/user-card";
 import { User } from "@/types/user";
+import { ThemedView } from "@/components/themed-view";
+import { ThemedText } from "@/components/themed-text";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 export default function FollowingScreen() {
   const { userId, username } = useLocalSearchParams<{
@@ -22,6 +23,7 @@ export default function FollowingScreen() {
   const [following, setFollowing] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const mutedTextColor = useThemeColor({ light: "#666", dark: "#999" }, "icon");
 
   const loadFollowing = async () => {
     if (!userId) return;
@@ -29,6 +31,11 @@ export default function FollowingScreen() {
     try {
       setLoading(true);
       const response = await userService.getFollowing(userId, { limit: 100 });
+      console.log("Following response:", response.following);
+      // Log follow status for debugging
+      response.following.forEach((user) => {
+        console.log(`User ${user.username}: isFollowing=${user.isFollowing}, followRequestStatus=${user.followRequestStatus}`);
+      });
       setFollowing(response.following);
     } catch (error) {
       console.error("Error loading following:", error);
@@ -52,7 +59,7 @@ export default function FollowingScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white dark:bg-gray-900">
+    <ThemedView className="flex-1">
       <StatusBar style="auto" />
       <Stack.Screen
         options={{
@@ -61,11 +68,11 @@ export default function FollowingScreen() {
           headerBackTitle: "Voltar",
         }}
       />
-      <SafeAreaView className="flex-1">
+      <SafeAreaView edges={["bottom"]} className="flex-1">
         {loading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#3B82F6" />
-          </View>
+          <ThemedView className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color="#FE2C55" />
+          </ThemedView>
         ) : following.length > 0 ? (
           <FlatList
             data={following}
@@ -76,22 +83,28 @@ export default function FollowingScreen() {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
+            contentContainerStyle={{ paddingBottom: 16 }}
           />
         ) : (
-          <View className="flex-1 items-center justify-center px-6">
-            <Ionicons name="people-outline" size={64} color="#9CA3AF" />
-            <Text className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+          <ThemedView className="flex-1 items-center justify-center px-6">
+            <Ionicons name="people-outline" size={64} color={mutedTextColor} />
+            <ThemedText
+              type="defaultSemiBold"
+              className="mt-4 text-lg text-center"
+            >
               Não está seguindo ninguém
-            </Text>
-            <Text className="text-center text-gray-600 dark:text-gray-400 mt-2">
+            </ThemedText>
+            <ThemedText
+              className="text-center mt-2 text-sm"
+              style={{ color: mutedTextColor }}
+            >
               {username
                 ? `@${username} ainda não está seguindo ninguém`
                 : "Você ainda não está seguindo ninguém"}
-            </Text>
-          </View>
+            </ThemedText>
+          </ThemedView>
         )}
       </SafeAreaView>
-    </View>
+    </ThemedView>
   );
 }
-

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "mapin-mobile",
+    "name": "Mapin",
     "slug": "mapin-mobile",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mapinmobile",
@@ -43,11 +43,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/mapin-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
+            "image": "./assets/images/mapin-icon-dark.png",
             "backgroundColor": "#000000"
           }
         }

@@ -4,37 +4,186 @@ import { Pin } from "@/types/pin";
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
 import { useEffect, useState, useRef, useCallback } from "react";
-import {
-  ActivityIndicator,
-  View,
-  TouchableOpacity,
-  Dimensions,
-} from "react-native";
+import { ActivityIndicator, View, TouchableOpacity } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { useGlobalSearchParams, useRouter } from "expo-router";
 import { MapPinCard } from "@/components/map-pin-card";
 import { pinService } from "@/services/pin.service";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Ionicons } from "@expo/vector-icons";
 
 Mapbox.setAccessToken(MAPBOX_CONFIG.ACCESS_TOKEN);
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+// Pulsating Pin Component
+function PulsatingPin({ key }: { key?: string }) {
+  const scale1 = useSharedValue(1);
+  const opacity1 = useSharedValue(0.8);
+  const scale2 = useSharedValue(1);
+  const opacity2 = useSharedValue(0.6);
+  const mainScale = useSharedValue(1);
+
+  useEffect(() => {
+    // Reset values
+    scale1.value = 1;
+    opacity1.value = 0.8;
+    scale2.value = 1;
+    opacity2.value = 0.6;
+    mainScale.value = 1;
+
+    // Start animations immediately
+    scale1.value = withRepeat(
+      withTiming(2.5, {
+        duration: 1500,
+        easing: Easing.out(Easing.quad),
+      }),
+      -1,
+      false
+    );
+    opacity1.value = withRepeat(
+      withTiming(0, {
+        duration: 1500,
+        easing: Easing.out(Easing.quad),
+      }),
+      -1,
+      false
+    );
+
+    // Second ring with delay
+    const timeout = setTimeout(() => {
+      scale2.value = withRepeat(
+        withTiming(2.5, {
+          duration: 1500,
+          easing: Easing.out(Easing.quad),
+        }),
+        -1,
+        false
+      );
+      opacity2.value = withRepeat(
+        withTiming(0, {
+          duration: 1500,
+          easing: Easing.out(Easing.quad),
+        }),
+        -1,
+        false
+      );
+    }, 750);
+
+    // Main pin pulse
+    mainScale.value = withRepeat(
+      withTiming(1.2, {
+        duration: 1000,
+        easing: Easing.inOut(Easing.ease),
+      }),
+      -1,
+      true
+    );
+
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  const animatedRing1Style = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale1.value }],
+      opacity: opacity1.value,
+    };
+  });
+
+  const animatedRing2Style = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale2.value }],
+      opacity: opacity2.value,
+    };
+  });
+
+  const animatedMainStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: mainScale.value }],
+    };
+  });
+
+  return (
+    <View
+      style={{
+        alignItems: "center",
+        justifyContent: "center",
+        width: 60,
+        height: 60,
+      }}
+    >
+      {/* First pulsating ring */}
+      <Animated.View
+        style={[
+          {
+            position: "absolute",
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: "#F91880",
+            borderWidth: 3,
+            borderColor: "#fff",
+          },
+          animatedRing1Style,
+        ]}
+      />
+      {/* Second pulsating ring */}
+      <Animated.View
+        style={[
+          {
+            position: "absolute",
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: "#F91880",
+            borderWidth: 3,
+            borderColor: "#fff",
+          },
+          animatedRing2Style,
+        ]}
+      />
+      {/* Main pin with pulse */}
+      <Animated.View
+        style={[
+          {
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: "#F91880",
+            borderWidth: 5,
+            borderColor: "#fff",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.6,
+            shadowRadius: 10,
+            elevation: 12,
+          },
+          animatedMainStyle,
+        ]}
+      />
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const api = useApi();
   const router = useRouter();
   const { pinId } = useGlobalSearchParams<{ pinId?: string }>();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
   const [pins, setPins] = useState<Pin[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [isLoadingPin, setIsLoadingPin] = useState(false);
   const cameraRef = useRef<Mapbox.Camera>(null);
+  const mapViewRef = useRef<Mapbox.MapView>(null);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [hasAnimatedToUser, setHasAnimatedToUser] = useState(false);
 
   useEffect(() => {
     async function fetchPinsAndLocation() {
@@ -63,13 +212,29 @@ export default function HomeScreen() {
     fetchPinsAndLocation();
   }, [api.pins]);
 
+  // Animate to user location once map is loaded and location is available
+  useEffect(() => {
+    if (mapLoaded && userLocation && !hasAnimatedToUser && cameraRef.current) {
+      // Small delay to ensure map is fully rendered
+      setTimeout(() => {
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [userLocation.longitude, userLocation.latitude],
+            zoomLevel: MAPBOX_CONFIG.DEFAULT_ZOOM,
+            animationDuration: MAPBOX_CONFIG.ANIMATION_DURATION,
+          });
+          setHasAnimatedToUser(true);
+        }
+      }, 300);
+    }
+  }, [mapLoaded, userLocation, hasAnimatedToUser]);
+
   // Handle pinId from route params
   useEffect(() => {
     const pinIdValue = Array.isArray(pinId) ? pinId[0] : pinId;
     if (pinIdValue && typeof pinIdValue === "string") {
       handlePinSelect(pinIdValue);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pinId]);
 
   const handlePinSelect = async (id: string) => {
@@ -139,6 +304,9 @@ export default function HomeScreen() {
     }
   };
 
+  const handleMapLoaded = useCallback(() => {
+    setMapLoaded(true);
+  }, []);
 
   if (loading) {
     return (
@@ -151,6 +319,7 @@ export default function HomeScreen() {
   return (
     <View className="flex-1">
       <Mapbox.MapView
+        ref={mapViewRef}
         style={{ flex: 1 }}
         styleURL={MAPBOX_CONFIG.STYLE_URL}
         logoEnabled={false}
@@ -158,50 +327,53 @@ export default function HomeScreen() {
         compassEnabled={false}
         pitchEnabled={true}
         rotateEnabled={true}
+        onDidFinishLoadingMap={handleMapLoaded}
       >
         <Mapbox.Camera
           ref={cameraRef}
-          zoomLevel={MAPBOX_CONFIG.DEFAULT_ZOOM}
-          centerCoordinate={
-            userLocation
-              ? [userLocation.longitude, userLocation.latitude]
-              : MAPBOX_CONFIG.DEFAULT_COORDINATES
-          }
-          animationDuration={MAPBOX_CONFIG.ANIMATION_DURATION}
-          pitch={60}
+          zoomLevel={MAPBOX_CONFIG.WORLDVIEW_ZOOM}
+          centerCoordinate={[0, 0]}
+          animationDuration={0}
+          pitch={0}
         />
 
         {/* Render pins as red dots */}
-        {pins.map((pin) => (
-          <Mapbox.PointAnnotation
-            key={pin.id}
-            id={pin.id}
-            coordinate={[pin.lng, pin.lat]}
-            onSelected={() => handlePinSelect(pin.id)}
-          >
-            <TouchableOpacity
-              onPress={() => handlePinSelect(pin.id)}
-              activeOpacity={0.8}
+        {pins.map((pin) => {
+          const isSelected = selectedPin?.id === pin.id;
+          return (
+            <Mapbox.PointAnnotation
+              key={pin.id}
+              id={pin.id}
+              coordinate={[pin.lng, pin.lat]}
+              onSelected={() => handlePinSelect(pin.id)}
             >
-              <View
-                style={{
-                  width: selectedPin?.id === pin.id ? 20 : 16,
-                  height: selectedPin?.id === pin.id ? 20 : 16,
-                  borderRadius: selectedPin?.id === pin.id ? 10 : 8,
-                  backgroundColor:
-                    selectedPin?.id === pin.id ? "#F91880" : "#EF4444",
-                  borderWidth: 2,
-                  borderColor: "#fff",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 3.84,
-                  elevation: 5,
-                }}
-              />
-            </TouchableOpacity>
-          </Mapbox.PointAnnotation>
-        ))}
+              <TouchableOpacity
+                onPress={() => handlePinSelect(pin.id)}
+                activeOpacity={0.8}
+              >
+                {isSelected ? (
+                  <PulsatingPin key={pin.id} />
+                ) : (
+                  <View
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: "#EF4444",
+                      borderWidth: 2,
+                      borderColor: "#fff",
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 3.84,
+                      elevation: 5,
+                    }}
+                  />
+                )}
+              </TouchableOpacity>
+            </Mapbox.PointAnnotation>
+          );
+        })}
 
         {/* Render user location as blue dot */}
         {userLocation && (

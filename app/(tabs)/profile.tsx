@@ -12,6 +12,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/auth.context";
@@ -28,14 +30,11 @@ import { ProfilePictureUploader } from "@/components/profile-picture-uploader";
 // const { width } = Dimensions.get("window");
 
 export default function ProfileScreen() {
-  // const borderColor = useThemeColor({}, "icon");
   const mutedTextColor = useThemeColor({ light: "#666", dark: "#999" }, "icon");
   const textColor = useThemeColor({}, "text");
-  const backgroundColor = useThemeColor(
-    { light: "#fff", dark: "#1a1a1a" },
-    "background"
-  );
   const { user, refreshUser, logout } = useAuth();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingBio, setEditingBio] = useState("");
@@ -190,9 +189,9 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView className="flex-1">
-      <SafeAreaView edges={["top"]} className="flex-1">
+      <SafeAreaView edges={["top", "bottom"]} className="flex-1">
         {/* Fixed Header */}
-        <ThemedView className="px-4 py-3 flex-row justify-between items-center border-b border-gray-200 dark:border-gray-800">
+        <ThemedView className="px-4 py-3 mb-6 flex-row justify-between items-center border-b border-gray-200 dark:border-gray-800">
           <ThemedText type="defaultSemiBold" className="text-xl">
             @{user.username}
           </ThemedText>
@@ -218,22 +217,26 @@ export default function ProfileScreen() {
           }
         >
           {/* Profile Header */}
-          <ThemedView className="items-center py-6">
+          <ThemedView className="items-center border-b border-black/20 dark:border-white/20 pb-6">
             {/* Avatar */}
             {user.profilePictureUrl ? (
               <Image
                 source={{ uri: user.profilePictureUrl }}
                 className="w-28 h-28 rounded-full mb-4"
-                style={{ borderWidth: 2, borderColor: "#FE2C55" }}
+                style={{
+                  borderWidth: 2,
+                  borderColor: isDark ? "#fff" : "#808080",
+                }}
               />
             ) : (
               <ThemedView
                 className="w-28 h-28 rounded-full mb-4 items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600"
-                style={{ borderWidth: 2, borderColor: "#FE2C55" }}
+                style={{
+                  borderWidth: 2,
+                  borderColor: isDark ? "#808080" : "#808080",
+                }}
               >
-                <ThemedText className="text-4xl text-white font-bold">
-                  {user.fullName.charAt(0).toUpperCase()}
-                </ThemedText>
+                <Ionicons name="person" size={48} color="#808080" />
               </ThemedView>
             )}
 
@@ -243,8 +246,15 @@ export default function ProfileScreen() {
             </ThemedText>
 
             {/* Stats Row */}
-            <ThemedView className="flex-row items-center justify-center gap-6 mb-4 mt-3">
-              <TouchableOpacity className="items-center">
+            <View className="p-2 rounded-xl flex-row items-center justify-center gap-6 mb-4 mt-3">
+              <TouchableOpacity
+                className="items-center w-24"
+                onPress={() =>
+                  router.push(
+                    `/following?userId=${user.id}&username=${user.username}`
+                  )
+                }
+              >
                 <ThemedText type="defaultSemiBold" className="text-lg">
                   {profileData?.followingCount || 0}
                 </ThemedText>
@@ -262,7 +272,7 @@ export default function ProfileScreen() {
               />
 
               <TouchableOpacity
-                className="items-center"
+                className="items-center w-24"
                 onPress={() =>
                   router.push(
                     `/followers?userId=${user.id}&username=${user.username}`
@@ -285,7 +295,7 @@ export default function ProfileScreen() {
                 style={{ backgroundColor: mutedTextColor }}
               />
 
-              <TouchableOpacity className="items-center">
+              <TouchableOpacity className="items-center w-24">
                 <ThemedText type="defaultSemiBold" className="text-lg">
                   {pins.length}
                 </ThemedText>
@@ -296,7 +306,7 @@ export default function ProfileScreen() {
                   Pins
                 </ThemedText>
               </TouchableOpacity>
-            </ThemedView>
+            </View>
 
             {/* Bio */}
             {user.bio && (
@@ -305,53 +315,39 @@ export default function ProfileScreen() {
               </ThemedText>
             )}
 
-            {/* Instagram */}
-            {user.instagramUsername && (
-              <TouchableOpacity className="flex-row items-center gap-1 mb-4">
-                <Ionicons
-                  name="logo-instagram"
-                  size={16}
-                  color={mutedTextColor}
-                />
-                <ThemedText
-                  className="text-sm"
-                  style={{ color: mutedTextColor }}
-                >
-                  @{user.instagramUsername}
-                </ThemedText>
-              </TouchableOpacity>
-            )}
+            {/* Instagram and Pending Requests */}
+            <ThemedView className="flex-row items-center gap-1">
+              {/* {user.instagramUsername && (
+                <TouchableOpacity className="flex-row items-center gap-1 bg-black/20 dark:bg-white/10 rounded-xl p-3">
+                  <Ionicons
+                    name="logo-instagram"
+                    size={24}
+                    color={isDark ? "#fff" : "#000"}
+                  />
+                </TouchableOpacity>
+              )} */}
 
-            {/* Pending Requests Button */}
-            {pendingRequestsCount > 0 && (
-              <TouchableOpacity
-                onPress={() => router.push("/follow-requests")}
-                className="mx-4 py-3 px-6 rounded-full items-center flex-row gap-2"
-                style={{ backgroundColor: "#FE2C55" }}
-              >
-                <Ionicons name="person-add" size={18} color="#fff" />
-                <ThemedText
-                  type="defaultSemiBold"
-                  className="text-sm text-white"
+              {/* Pending Requests Button */}
+              {pendingRequestsCount > 0 && (
+                <TouchableOpacity
+                  onPress={() => router.push("/follow-requests")}
+                  className="px-8 py-3 rounded-xl items-center flex-row gap-2 bg-blue-500"
                 >
-                  {pendingRequestsCount} Solicitaç
-                  {pendingRequestsCount === 1 ? "ão" : "ões"}
-                </ThemedText>
-              </TouchableOpacity>
-            )}
+                  <Ionicons name="person-add" size={18} color="#fff" />
+                  <ThemedText
+                    type="defaultSemiBold"
+                    className="text-sm text-white"
+                  >
+                    {pendingRequestsCount} Solicitaç
+                    {pendingRequestsCount === 1 ? "ão" : "ões"}
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
+            </ThemedView>
           </ThemedView>
 
-          {/* Divider */}
-          <ThemedView
-            className="h-2"
-            style={{
-              backgroundColor:
-                backgroundColor === "#fff" ? "#f3f4f6" : "#0a0a0a",
-            }}
-          />
-
           {/* Pins Grid */}
-          <ThemedView className="py-4">
+          <ThemedView className="py-4 pb-8">
             {loading ? (
               <ThemedView className="py-12 items-center">
                 <ActivityIndicator size="large" color="#FE2C55" />

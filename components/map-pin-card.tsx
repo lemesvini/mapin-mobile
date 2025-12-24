@@ -1,23 +1,18 @@
-import { ThemedText } from "./themed-text";
-import { ThemedView } from "./themed-view";
-import { Pin, Comment } from "@/types/pin";
 import {
   View,
   Image,
   TouchableOpacity,
   Pressable,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
+  Text,
+  Modal,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { formatDistanceToNow } from "@/utils/date";
-import { useState, useEffect, useCallback } from "react";
-import { pinService } from "@/services/pin.service";
-import { useAuth } from "@/contexts/auth.context";
+import { Pin } from "@/types/pin";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useState } from "react";
 
 interface MapPinCardProps {
   pin: Pin;
@@ -26,65 +21,27 @@ interface MapPinCardProps {
 }
 
 export function MapPinCard({ pin, onClose, onLike }: MapPinCardProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const [isLiked, setIsLiked] = useState(pin.isLiked);
-  const [likesCount, setLikesCount] = useState(pin._count.likes);
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [isLoadingComments, setIsLoadingComments] = useState(false);
-  const [commentText, setCommentText] = useState("");
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [commentsCount, setCommentsCount] = useState(pin._count.comments);
-
   const timeAgo = formatDistanceToNow(new Date(pin.createdAt));
+  const [isImageFullscreen, setIsImageFullscreen] = useState(false);
+  const screenDimensions = Dimensions.get("window");
 
-  // Estimate tab bar height (usually around 49-83px depending on device)
+  // Tab bar height + gap
   const tabBarHeight = insets.bottom + 49;
-
-  const loadComments = useCallback(async () => {
-    setIsLoadingComments(true);
-    try {
-      const response = await pinService.getComments(pin.id, { limit: 50 });
-      setComments(response.comments);
-    } catch (error) {
-      console.error("Failed to load comments:", error);
-    } finally {
-      setIsLoadingComments(false);
-    }
-  }, [pin.id]);
-
-  useEffect(() => {
-    if (showComments && comments.length === 0) {
-      loadComments();
-    }
-  }, [showComments, comments.length, loadComments]);
+  const gap = 16;
+  const bottomPosition = tabBarHeight + gap;
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
     onLike?.(pin.id);
   };
 
-  const handleToggleComments = () => {
-    setShowComments(!showComments);
+  const handleAuthorPress = () => {
+    router.push(`/user-profile?username=${pin.author.username}`);
   };
 
-  const handleSubmitComment = async () => {
-    if (!commentText.trim() || !user) return;
-
-    setIsSubmittingComment(true);
-    try {
-      await pinService.addComment(pin.id, commentText.trim());
-      setCommentText("");
-      setCommentsCount((prev) => prev + 1);
-      await loadComments();
-    } catch (error) {
-      console.error("Failed to add comment:", error);
-    } finally {
-      setIsSubmittingComment(false);
+  const handleImagePress = () => {
+    if (pin.media && pin.media.length > 0) {
+      setIsImageFullscreen(true);
     }
   };
 
@@ -92,389 +49,229 @@ export function MapPinCard({ pin, onClose, onLike }: MapPinCardProps) {
     <View
       style={{
         position: "absolute",
-        bottom: tabBarHeight,
-        left: 8,
-        right: 8,
-        backgroundColor: isDark ? "#000" : "#fff",
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        bottom: bottomPosition,
+        left: 16,
+        right: 16,
+        backgroundColor: "#fff",
+        borderRadius: 16,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 10,
-        maxHeight: 400,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
+        padding: 16,
       }}
     >
       {/* Close button */}
       <TouchableOpacity
         onPress={onClose}
-        className="absolute top-3 right-4 z-10 p-2 rounded-full"
         style={{
-          backgroundColor: isDark
-            ? "rgba(255,255,255,0.1)"
-            : "rgba(0,0,0,0.05)",
+          position: "absolute",
+          top: 12,
+          right: 12,
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: "rgba(0, 0, 0, 0.05)",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 10,
         }}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons
-          name="close"
-          size={20}
-          color={isDark ? "#E7E9EA" : "#0F1419"}
-        />
+        <Ionicons name="close" size={18} color="#000" />
       </TouchableOpacity>
 
-      <ScrollView
-        className="px-4 pt-4 pb-4"
-        showsVerticalScrollIndicator={false}
-        style={{
-          paddingBottom: Math.max(insets.bottom, 16),
-        }}
+      {/* Author info */}
+      <Pressable
+        onPress={handleAuthorPress}
+        style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
       >
-        <ThemedView>
-          <View className="flex-row">
-            {/* Avatar */}
-            <Pressable
-              onPress={() => {
-                router.push(`/user-profile?username=${pin.author.username}`);
-              }}
-              className="mr-3"
-            >
-              {pin.author.profilePictureUrl ? (
-                <Image
-                  source={{ uri: pin.author.profilePictureUrl }}
-                  className="w-10 h-10 rounded-full"
-                />
-              ) : (
-                <View className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-700 items-center justify-center">
-                  <ThemedText className="text-lg font-bold">
-                    {pin.author.fullName.charAt(0).toUpperCase()}
-                  </ThemedText>
-                </View>
-              )}
-            </Pressable>
-
-            {/* Content */}
-            <View className="flex-1">
-              {/* Header: Author info and menu */}
-              <View className="flex-row items-start justify-between mb-0.5">
-                <View className="flex-1 flex-row items-center flex-wrap">
-                  <Pressable
-                    onPress={() => {
-                      router.push(
-                        `/user-profile?username=${pin.author.username}`
-                      );
-                    }}
-                  >
-                    <ThemedText className="font-bold text-[15px] mr-1">
-                      {pin.author.fullName}
-                    </ThemedText>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      router.push(
-                        `/user-profile?username=${pin.author.username}`
-                      );
-                    }}
-                  >
-                    <ThemedText
-                      className="text-[15px] mr-1"
-                      style={{ color: isDark ? "#71767B" : "#536471" }}
-                    >
-                      @{pin.author.username}
-                    </ThemedText>
-                  </Pressable>
-                  <ThemedText
-                    className="text-[15px]"
-                    style={{ color: isDark ? "#71767B" : "#536471" }}
-                  >
-                    · {timeAgo}
-                  </ThemedText>
-                </View>
-                <TouchableOpacity className="p-1 -mr-1 -mt-1">
-                  <Ionicons
-                    name="ellipsis-horizontal"
-                    size={16}
-                    color={isDark ? "#71767B" : "#536471"}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {/* Feeling tag */}
-              {pin.feeling && (
-                <View className="flex-row items-center mb-2">
-                  <ThemedText
-                    className="text-[13px]"
-                    style={{ color: isDark ? "#71767B" : "#536471" }}
-                  >
-                    se sentindo{" "}
-                  </ThemedText>
-                  <View
-                    className="px-2 py-0.5 rounded-full"
-                    style={{
-                      backgroundColor: isDark
-                        ? "rgba(29, 155, 240, 0.1)"
-                        : "rgba(29, 155, 240, 0.1)",
-                    }}
-                  >
-                    <ThemedText
-                      className="font-semibold text-[13px]"
-                      style={{ color: "#1D9BF0" }}
-                    >
-                      {pin.feeling}
-                    </ThemedText>
-                  </View>
-                </View>
-              )}
-
-              {/* Text content */}
-              <ThemedText className="text-[15px] mb-3 leading-5">
-                {pin.content}
-              </ThemedText>
-
-              {/* Media */}
-              {pin.media && pin.media.length > 0 && (
-                <View className="mb-3 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
-                  <Image
-                    source={{ uri: pin.media[0].url }}
-                    className="w-full h-80"
-                    resizeMode="cover"
-                  />
-                  {pin.media.length > 1 && (
-                    <View className="absolute top-2 right-2 bg-black/75 px-2.5 py-1 rounded-full">
-                      <ThemedText className="text-white text-xs font-semibold">
-                        1 / {pin.media.length}
-                      </ThemedText>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* Action buttons */}
-              <View className="flex-row items-center justify-start gap-2 -ml-2 mt-1">
-                {/* Like */}
-                <TouchableOpacity
-                  onPress={handleLike}
-                  className="flex-row items-center px-2 py-1.5 rounded-full active:bg-pink-500/10"
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name={isLiked ? "heart" : "heart-outline"}
-                    size={18}
-                    color={isLiked ? "#F91880" : isDark ? "#71767B" : "#536471"}
-                  />
-                  {likesCount > 0 && (
-                    <ThemedText
-                      className="ml-1.5 text-[13px]"
-                      style={{
-                        color: isLiked
-                          ? "#F91880"
-                          : isDark
-                          ? "#71767B"
-                          : "#536471",
-                      }}
-                    >
-                      {likesCount}
-                    </ThemedText>
-                  )}
-                </TouchableOpacity>
-
-                {/* Comment */}
-                <TouchableOpacity
-                  onPress={handleToggleComments}
-                  className="flex-row items-center px-2 py-1.5 rounded-full active:bg-blue-500/10"
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name={showComments ? "chatbubble" : "chatbubble-outline"}
-                    size={18}
-                    color={
-                      showComments ? "#1D9BF0" : isDark ? "#71767B" : "#536471"
-                    }
-                  />
-                  {commentsCount > 0 && (
-                    <ThemedText
-                      className="ml-1.5 text-[13px]"
-                      style={{
-                        color: showComments
-                          ? "#1D9BF0"
-                          : isDark
-                          ? "#71767B"
-                          : "#536471",
-                      }}
-                    >
-                      {commentsCount}
-                    </ThemedText>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Comments section */}
-              {showComments && (
-                <View
-                  className="mt-4 pt-4"
-                  style={{
-                    borderTopWidth: 1,
-                    borderTopColor: isDark ? "#2F3336" : "#EFF3F4",
-                  }}
-                >
-                  {/* Comment input */}
-                  {user && (
-                    <View className="flex-row">
-                      <View className="flex-1 flex-row gap-2 items-center">
-                        <TextInput
-                          value={commentText}
-                          onChangeText={setCommentText}
-                          placeholder="Responder..."
-                          placeholderTextColor={isDark ? "#71767B" : "#536471"}
-                          className="flex-1 text-[15px border border-black/20 dark:border-white/20 rounded-full p-2"
-                          style={{
-                            color: isDark ? "#E7E9EA" : "#0F1419",
-                            backgroundColor: "transparent",
-                          }}
-                          multiline
-                          maxLength={280}
-                        />
-                        <View className="flex-row justify-end items-center">
-                          <TouchableOpacity
-                            onPress={handleSubmitComment}
-                            disabled={
-                              !commentText.trim() || isSubmittingComment
-                            }
-                            className="px-4 py-1.5 rounded-full"
-                            style={{
-                              backgroundColor:
-                                commentText.trim() && !isSubmittingComment
-                                  ? "#1D9BF0"
-                                  : isDark
-                                  ? "#0E4465"
-                                  : "#94D3F5",
-                              opacity:
-                                commentText.trim() && !isSubmittingComment
-                                  ? 1
-                                  : 0.5,
-                            }}
-                          >
-                            {isSubmittingComment ? (
-                              <ActivityIndicator size="small" color="#fff" />
-                            ) : (
-                              <Ionicons name="send" size={18} color="#fff" />
-                            )}
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Comments list */}
-                  {isLoadingComments ? (
-                    <View className="py-8 items-center">
-                      <ActivityIndicator size="small" color="#1D9BF0" />
-                    </View>
-                  ) : comments.length > 0 ? (
-                    <View>
-                      {comments.map((comment, index) => (
-                        <View
-                          key={comment.id}
-                          className="flex-row py-3"
-                          style={{
-                            borderTopWidth: index > 0 ? 1 : 0,
-                            borderTopColor: isDark ? "#2F3336" : "#EFF3F4",
-                          }}
-                        >
-                          <Pressable
-                            onPress={() => {
-                              router.push(
-                                `/user-profile?username=${comment.author.username}`
-                              );
-                            }}
-                          >
-                            {comment.author.profilePictureUrl ? (
-                              <Image
-                                source={{
-                                  uri: comment.author.profilePictureUrl,
-                                }}
-                                className="w-8 h-8 rounded-full mr-2"
-                              />
-                            ) : (
-                              <View className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 items-center justify-center mr-2">
-                                <ThemedText className="text-sm font-bold">
-                                  {comment.author.fullName
-                                    .charAt(0)
-                                    .toUpperCase()}
-                                </ThemedText>
-                              </View>
-                            )}
-                          </Pressable>
-                          <View className="flex-1">
-                            <View className="flex-row items-center mb-1 flex-wrap">
-                              <Pressable
-                                onPress={() => {
-                                  router.push(
-                                    `/user-profile?username=${comment.author.username}`
-                                  );
-                                }}
-                              >
-                                <ThemedText className="font-bold text-[15px] mr-1">
-                                  {comment.author.fullName}
-                                </ThemedText>
-                              </Pressable>
-                              <Pressable
-                                onPress={() => {
-                                  router.push(
-                                    `/user-profile?username=${comment.author.username}`
-                                  );
-                                }}
-                              >
-                                <ThemedText
-                                  className="text-[15px] mr-1"
-                                  style={{
-                                    color: isDark ? "#71767B" : "#536471",
-                                  }}
-                                >
-                                  @{comment.author.username}
-                                </ThemedText>
-                              </Pressable>
-                              <ThemedText
-                                className="text-[15px]"
-                                style={{
-                                  color: isDark ? "#71767B" : "#536471",
-                                }}
-                              >
-                                ·{" "}
-                                {formatDistanceToNow(
-                                  new Date(comment.createdAt)
-                                )}
-                              </ThemedText>
-                            </View>
-                            <ThemedText className="text-[15px] leading-5">
-                              {comment.content}
-                            </ThemedText>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  ) : (
-                    <View className="py-8 items-center">
-                      <Ionicons
-                        name="chatbubbles-outline"
-                        size={32}
-                        color={isDark ? "#2F3336" : "#CFD9DE"}
-                      />
-                      <ThemedText
-                        className="text-sm mt-2"
-                        style={{ color: isDark ? "#71767B" : "#536471" }}
-                      >
-                        Nenhum comentário ainda
-                      </ThemedText>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
+        {pin.author.profilePictureUrl ? (
+          <Image
+            source={{ uri: pin.author.profilePictureUrl }}
+            style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }}
+          />
+        ) : (
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "#E5E5E5",
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: 12,
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "bold", color: "#000" }}>
+              {pin.author.fullName.charAt(0).toUpperCase()}
+            </Text>
           </View>
-        </ThemedView>
-      </ScrollView>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: "#000" }}>
+            {pin.author.fullName}
+          </Text>
+          <Text style={{ fontSize: 13, color: "#666" }}>
+            @{pin.author.username} · {timeAgo}
+          </Text>
+        </View>
+      </Pressable>
+
+      {/* Feeling tag */}
+      {pin.feeling && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
+          <Text style={{ fontSize: 13, color: "#666", marginRight: 4 }}>
+            se sentindo
+          </Text>
+          <View
+            style={{
+              backgroundColor: "rgba(29, 155, 240, 0.1)",
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 12,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: "600", color: "#1D9BF0" }}>
+              {pin.feeling}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Content */}
+      {pin.content && (
+        <Text
+          style={{
+            fontSize: 15,
+            color: "#000",
+            lineHeight: 20,
+            marginBottom: 12,
+          }}
+        >
+          {pin.content}
+        </Text>
+      )}
+
+      {/* Media */}
+      {pin.media && pin.media.length > 0 && (
+        <Pressable
+          onPress={handleImagePress}
+          style={{ marginBottom: 12, borderRadius: 12, overflow: "hidden" }}
+        >
+          <Image
+            source={{ uri: pin.media[0].url }}
+            style={{ width: "100%", height: 200, borderRadius: 12 }}
+            resizeMode="cover"
+          />
+          {pin.media.length > 1 && (
+            <View
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                backgroundColor: "rgba(0, 0, 0, 0.6)",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 12,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>
+                1 / {pin.media.length}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      )}
+
+      {/* Fullscreen Image Modal */}
+      <Modal
+        visible={isImageFullscreen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsImageFullscreen(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.95)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          {/* Close button */}
+          <TouchableOpacity
+            onPress={() => setIsImageFullscreen(false)}
+            style={{
+              position: "absolute",
+              top: insets.top + 16,
+              right: 16,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "rgba(255, 255, 255, 0.2)",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10,
+            }}
+          >
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Fullscreen image */}
+          {pin.media && pin.media.length > 0 && (
+            <Image
+              source={{ uri: pin.media[0].url }}
+              style={{
+                width: screenDimensions.width,
+                height: screenDimensions.height,
+              }}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
+
+      {/* Actions */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 24 }}>
+        <TouchableOpacity
+          onPress={handleLike}
+          style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons
+            name={pin.isLiked ? "heart" : "heart-outline"}
+            size={20}
+            color={pin.isLiked ? "#F91880" : "#666"}
+          />
+          {pin._count.likes > 0 && (
+            <Text
+              style={{
+                fontSize: 14,
+                color: pin.isLiked ? "#F91880" : "#666",
+              }}
+            >
+              {pin._count.likes}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Ionicons name="chatbubble-outline" size={20} color="#666" />
+          {pin._count.comments > 0 && (
+            <Text style={{ fontSize: 14, color: "#666" }}>
+              {pin._count.comments}
+            </Text>
+          )}
+        </View>
+      </View>
     </View>
   );
 }
