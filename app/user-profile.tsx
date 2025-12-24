@@ -39,7 +39,7 @@ export default function UserProfileScreen() {
       // First get user data, then get their pins using userId
       const userData = await userService.getUserProfile(username);
       setUser(userData);
-      
+
       // Now fetch pins using the userId
       const userPins = await pinService.getUserPins(userData.id, { limit: 50 });
       setPins(userPins.pins);
@@ -63,7 +63,8 @@ export default function UserProfileScreen() {
 
   useEffect(() => {
     loadUserProfile();
-  }, [username]);
+    // }, [username]);
+  }, []);
 
   const handleFollowToggle = async () => {
     if (!user) return;
@@ -115,7 +116,7 @@ export default function UserProfileScreen() {
         error.response?.data?.error ||
         error.message ||
         "Não foi possível realizar a ação";
-      
+
       // If already pending/following, refresh the profile to get current state
       if (
         errorMessage.includes("already pending") ||
@@ -178,11 +179,7 @@ export default function UserProfileScreen() {
           }}
         />
         <SafeAreaView className="flex-1 items-center justify-center px-6">
-          <Ionicons
-            name="person-outline"
-            size={64}
-            color="#9CA3AF"
-          />
+          <Ionicons name="person-outline" size={64} color="#9CA3AF" />
           <Text className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
             Usuário não encontrado
           </Text>
@@ -191,8 +188,20 @@ export default function UserProfileScreen() {
     );
   }
 
-  const StatItem = ({ label, value, onPress }: { label: string; value: number; onPress?: () => void }) => (
-    <TouchableOpacity onPress={onPress} disabled={!onPress} className="items-center">
+  const StatItem = ({
+    label,
+    value,
+    onPress,
+  }: {
+    label: string;
+    value: number;
+    onPress?: () => void;
+  }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!onPress}
+      className="items-center"
+    >
       <Text className="text-2xl font-bold text-gray-900 dark:text-white">
         {value}
       </Text>
@@ -294,17 +303,15 @@ export default function UserProfileScreen() {
                 {followLoading ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text className={`font-semibold ${getFollowButtonTextColor()}`}>
+                  <Text
+                    className={`font-semibold ${getFollowButtonTextColor()}`}
+                  >
                     {getFollowButtonText()}
                   </Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity className="px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 items-center justify-center">
-                <Ionicons
-                  name="chatbubble-outline"
-                  size={20}
-                  color="#6B7280"
-                />
+                <Ionicons name="chatbubble-outline" size={20} color="#6B7280" />
               </TouchableOpacity>
             </View>
           )}
@@ -317,7 +324,11 @@ export default function UserProfileScreen() {
           </Text>
           {pins.length > 0 ? (
             pins.map((pin) => (
-              <PinCard key={pin.id} pin={pin} onUpdate={loadUserProfile} />
+              <PinCard
+                key={pin.id}
+                pin={pin}
+                // onUpdate={loadUserProfile}
+              />
             ))
           ) : (
             <View className="py-12 items-center">
@@ -334,4 +345,3 @@ export default function UserProfileScreen() {
     </View>
   );
 }
-

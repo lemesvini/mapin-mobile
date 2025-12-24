@@ -5,39 +5,24 @@ import {
   NativeTabs,
   VectorIcon,
 } from "expo-router/unstable-native-tabs";
-import React from "react";
 import { DynamicColorIOS, Platform } from "react-native";
 
 export default function TabLayout() {
-  // Liquid glass effect colors - iOS only feature
-  const labelColor =
-    Platform.OS === "ios"
-      ? DynamicColorIOS({
-          dark: "white",
-          light: "black",
-        })
-      : undefined;
-
-  const tintColor =
-    Platform.OS === "ios"
-      ? DynamicColorIOS({
-          dark: "white",
-          light: "black",
-        })
-      : undefined;
-
   return (
     <NativeTabs
-      labelStyle={
-        labelColor
-          ? {
-              // For the text color - adapts to light/dark backgrounds for liquid glass effect
-              color: labelColor,
-            }
-          : undefined
-      }
+      labelStyle={{
+        // For the text color - adapts to light/dark backgrounds for liquid glass effect
+        color: DynamicColorIOS({
+          dark: "white",
+          light: "black",
+        }),
+      }}
       // For the selected icon color - adapts to light/dark backgrounds
-      tintColor={tintColor}
+      tintColor={DynamicColorIOS({
+        dark: "white",
+        light: "black",
+      })}
+      minimizeBehavior="onScrollDown"
     >
       <NativeTabs.Trigger name="index">
         <Label>Mapa</Label>
@@ -60,7 +45,11 @@ export default function TabLayout() {
       <NativeTabs.Trigger name="search">
         <Label>Buscar</Label>
         {Platform.select({
-          ios: <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />,
+          ios: (
+            <Icon
+              sf={{ default: "magnifyingglass", selected: "magnifyingglass" }}
+            />
+          ),
           android: (
             <Icon src={<VectorIcon family={MaterialIcons} name="search" />} />
           ),
@@ -72,6 +61,21 @@ export default function TabLayout() {
           ios: <Icon sf={{ default: "person", selected: "person.fill" }} />,
           android: (
             <Icon src={<VectorIcon family={MaterialIcons} name="person" />} />
+          ),
+        })}
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="create-pin" role="search">
+        <Label>Novo Pin</Label>
+        {Platform.select({
+          ios: (
+            <Icon
+              sf={{ default: "plus.circle", selected: "plus.circle.fill" }}
+            />
+          ),
+          android: (
+            <Icon
+              src={<VectorIcon family={MaterialIcons} name="add-circle" />}
+            />
           ),
         })}
       </NativeTabs.Trigger>

@@ -13,6 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { UserCard } from "@/components/user-card";
 import { userService } from "@/services/user.service";
 import { User } from "@/types/user";
+import { ThemedView } from "@/components/themed-view";
+// import { ThemedText } from "@/components/themed-text";
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,17 +58,17 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+    <SafeAreaView className="flex-1 bg-white dark:bg-dark-background">
       <StatusBar style="auto" />
 
       {/* Header */}
-      <View className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+      <ThemedView className="px-4 py-3 border-b border-black/20 dark:border-white/20">
+        {/* <ThemedText type="title" className="mb-3">
           Buscar
-        </Text>
+        </ThemedText> */}
 
         {/* Search Input */}
-        <View className="flex-row items-center bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2">
+        <View className="flex-row items-center border border-black/20 dark:border-white/20 rounded-lg px-3 py-2">
           <Ionicons
             name="search"
             size={20}
@@ -93,7 +95,7 @@ export default function SearchScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </ThemedView>
 
       {/* Content */}
       <View className="flex-1">
@@ -143,4 +145,3 @@ export default function SearchScreen() {
     </SafeAreaView>
   );
 }
-

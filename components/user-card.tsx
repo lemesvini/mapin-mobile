@@ -105,7 +105,7 @@ export const UserCard = ({ user, onFollowChange }: UserCardProps) => {
   return (
     <TouchableOpacity
       onPress={() => router.push(`/user-profile?username=${user.username}`)}
-      className="flex-row items-center p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+      className="flex-row items-center p-4 border-b border-black/20 dark:border-white/20"
     >
       <View className="flex-row flex-1 items-center">
         {user.profilePictureUrl ? (
