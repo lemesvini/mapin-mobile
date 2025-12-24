@@ -1,16 +1,11 @@
 import axios from "axios";
+import { API_CONFIG } from "@/config/api.config";
 
-// TODO: Update this with your actual API URL
-// For local development on Android emulator, use 10.0.2.2
-// For iOS simulator, use localhost or your machine's IP
-const API_URL = "http://localhost:3333/auth";
-
+// Create a single unified API instance
 const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  timeout: 10000,
+  baseURL: API_CONFIG.BASE_URL,
+  headers: API_CONFIG.HEADERS,
+  timeout: API_CONFIG.TIMEOUT,
 });
 
 // Request interceptor to add token to requests
@@ -41,5 +36,14 @@ api.interceptors.response.use(
     }
   }
 );
+
+// Helper to set auth token for all requests
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common["Authorization"];
+  }
+};
 
 export default api;

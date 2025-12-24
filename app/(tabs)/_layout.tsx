@@ -57,6 +57,15 @@ export default function TabLayout() {
           ),
         })}
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="search">
+        <Label>Buscar</Label>
+        {Platform.select({
+          ios: <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />,
+          android: (
+            <Icon src={<VectorIcon family={MaterialIcons} name="search" />} />
+          ),
+        })}
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Label>Perfil</Label>
         {Platform.select({

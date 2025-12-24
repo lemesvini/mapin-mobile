@@ -11,7 +11,7 @@ export const authService = {
    * Login user
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>("/login", credentials);
+    const response = await api.post<AuthResponse>("/auth/login", credentials);
     return response.data;
   },
 
@@ -19,7 +19,7 @@ export const authService = {
    * Register new user
    */
   async register(credentials: RegisterCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>("/register", credentials);
+    const response = await api.post<AuthResponse>("/auth/register", credentials);
     return response.data;
   },
 
@@ -27,22 +27,11 @@ export const authService = {
    * Get current user profile
    */
   async getCurrentUser(token: string): Promise<User> {
-    const response = await api.get<{ user: User }>("/me", {
+    const response = await api.get<{ user: User }>("/auth/me", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
     return response.data.user;
-  },
-
-  /**
-   * Set auth token for all requests
-   */
-  setAuthToken(token: string | null) {
-    if (token) {
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    } else {
-      delete api.defaults.headers.common["Authorization"];
-    }
   },
 };

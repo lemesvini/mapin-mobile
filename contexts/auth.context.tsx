@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { authService } from "@/services/auth.service";
+import { setAuthToken } from "@/services/api";
 import {
   AuthContextType,
   LoginCredentials,
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Update axios auth token whenever token changes
   useEffect(() => {
-    authService.setAuthToken(token);
+    setAuthToken(token);
   }, [token]);
 
   const login = async (credentials: LoginCredentials) => {

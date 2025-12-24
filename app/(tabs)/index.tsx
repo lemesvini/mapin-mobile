@@ -6,7 +6,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-dark-background">
       <ThemedView className="flex-1 items-center justify-center">
-        <ThemedText>Tela do futuro mapa</ThemedText>
+        <ThemedText>Map will be implemented here with Mapbox</ThemedText>
       </ThemedView>
     </SafeAreaView>
   );
