@@ -35,9 +35,7 @@ export const userService = {
    * Follow a user
    */
   followUser: async (userId: string): Promise<FollowResponse> => {
-    const response = await api.post<FollowResponse>(
-      `/users/${userId}/follow`
-    );
+    const response = await api.post<FollowResponse>(`/users/${userId}/follow`);
     return response.data;
   },
 
@@ -131,5 +129,17 @@ export const userService = {
     );
     return response.data;
   },
-};
 
+  /**
+   * Update user profile
+   */
+  updateProfile: async (data: {
+    bio?: string;
+    profilePictureUrl?: string;
+    fullName?: string;
+    instagramUsername?: string;
+  }): Promise<User> => {
+    const response = await api.patch<{ user: User }>("/auth/me", data);
+    return response.data.user;
+  },
+};

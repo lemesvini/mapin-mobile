@@ -94,9 +94,21 @@ export const pinService = {
     userId: string,
     params?: { limit?: number; offset?: number }
   ): Promise<PinsResponse> => {
-    const response = await api.get<PinsResponse>("/pins", {
-      params: { authorId: userId, ...params },
-    });
-    return response.data;
+    const requestParams = { authorId: userId, ...params };
+    console.log("getUserPins - userId:", userId);
+    console.log("getUserPins - request params:", JSON.stringify(requestParams));
+    try {
+      const response = await api.get<PinsResponse>("/pins", {
+        params: requestParams,
+      });
+      console.log("getUserPins - full response:", JSON.stringify(response.data, null, 2));
+      console.log("getUserPins - response status:", response.status);
+      console.log("getUserPins - pins count:", response.data.pins?.length || 0);
+      return response.data;
+    } catch (error: any) {
+      console.error("getUserPins - error:", error);
+      console.error("getUserPins - error response:", error.response?.data);
+      throw error;
+    }
   },
 };

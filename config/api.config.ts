@@ -8,11 +8,10 @@
 
 export const API_CONFIG = {
   // Change this based on your environment
-  BASE_URL: __DEV__
-    ? "https://mapin-api-production-2f0a.up.railway.app" // Local development
-    : // ? "http://localhost:3333" // Local development
-      "https://mapin-api-production-2f0a.up.railway.app", // Production
-  //   BASE_URL: "http://localhost:3333",
+  BASE_URL: "http://localhost:3333",
+  // ? "http://localhost:3333"
+  // :  ? "http://localhost:3333" // Local development
+  //   "https://mapin-api-production-2f0a.up.railway.app", // Production
   TIMEOUT: 10000,
   HEADERS: {
     "Content-Type": "application/json",

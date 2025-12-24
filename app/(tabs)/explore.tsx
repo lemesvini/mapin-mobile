@@ -16,6 +16,7 @@ import { pinService } from "@/services/pin.service";
 import { useAuth } from "@/contexts/auth.context";
 import { Ionicons } from "@expo/vector-icons";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { router } from "expo-router";
 
 export default function ExploreScreen() {
   const { token } = useAuth();
@@ -103,8 +104,8 @@ export default function ExploreScreen() {
   };
 
   const handlePinPress = (pinId: string) => {
-    // TODO: Navigate to pin detail screen
-    console.log("Pin pressed:", pinId);
+    // Navigate to map screen with selected pin
+    router.push(`/?pinId=${pinId}` as any);
   };
 
   const renderEmpty = () => {

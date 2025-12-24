@@ -327,6 +327,9 @@ export default function UserProfileScreen() {
               <PinCard
                 key={pin.id}
                 pin={pin}
+                onPress={(pinId) => {
+                  router.push(`/(tabs)?pinId=${pinId}` as any);
+                }}
                 // onUpdate={loadUserProfile}
               />
             ))

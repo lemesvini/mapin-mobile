@@ -44,8 +44,7 @@ export default function CreatePinScreen() {
   const [currentStep, setCurrentStep] = useState<StepType>("content");
 
   // Media upload hook
-  const { uploading, progress, pickAndUploadImage, takePhotoAndUpload } =
-    useMediaUpload();
+  const { uploading, progress, showImagePicker } = useMediaUpload();
 
   useEffect(() => {
     requestLocationPermission();
@@ -146,21 +145,8 @@ export default function CreatePinScreen() {
     router.back();
   };
 
-  const handleUploadFromGallery = async () => {
-    const result = await pickAndUploadImage({
-      bucket: STORAGE_CONFIG.BUCKET,
-      folder: STORAGE_CONFIG.FOLDERS.PINS,
-      quality: 0.8,
-    });
-
-    if (result) {
-      setImageUrl(result.url);
-      setCurrentStep("content");
-    }
-  };
-
-  const handleTakePhoto = async () => {
-    const result = await takePhotoAndUpload({
+  const handleImageSelection = async () => {
+    const result = await showImagePicker({
       bucket: STORAGE_CONFIG.BUCKET,
       folder: STORAGE_CONFIG.FOLDERS.PINS,
       quality: 0.8,
@@ -482,9 +468,9 @@ export default function CreatePinScreen() {
                       </View>
                     )}
 
-                    <View className="gap-3 mb-6">
+                    <View className="mb-6">
                       <TouchableOpacity
-                        onPress={handleUploadFromGallery}
+                        onPress={handleImageSelection}
                         disabled={uploading}
                         className={`flex-row items-center justify-center py-4 rounded-xl ${
                           uploading
@@ -497,37 +483,12 @@ export default function CreatePinScreen() {
                         ) : (
                           <>
                             <Ionicons
-                              name="cloud-upload-outline"
+                              name="image-outline"
                               size={24}
                               color="white"
                             />
                             <Text className="ml-2 text-base font-bold text-white">
-                              Upload da Galeria
-                            </Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        onPress={handleTakePhoto}
-                        disabled={uploading}
-                        className={`flex-row items-center justify-center py-4 rounded-xl ${
-                          uploading
-                            ? "bg-black/20 dark:bg-white/20"
-                            : "bg-green-600 dark:bg-green-500"
-                        }`}
-                      >
-                        {uploading ? (
-                          <ActivityIndicator size="small" color="#00000060" />
-                        ) : (
-                          <>
-                            <Ionicons
-                              name="camera-outline"
-                              size={24}
-                              color="white"
-                            />
-                            <Text className="ml-2 text-base font-bold text-white">
-                              Tirar Foto
+                              Escolher Imagem
                             </Text>
                           </>
                         )}

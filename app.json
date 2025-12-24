@@ -2,7 +2,7 @@
   "expo": {
     "name": "mapin-mobile",
     "slug": "mapin-mobile",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mapinmobile",
@@ -60,6 +60,12 @@
           "isAndroidBackgroundLocationEnabled": false,
           "isIosBackgroundLocationEnabled": false
         }
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsVersion": "11.16.2"
+        }
       ]
     ],
     "experiments": {
@@ -70,7 +76,8 @@
       "router": {},
       "eas": {
         "projectId": "41b8c267-4d4a-4c4d-98e5-57dc047f02a9"
-      }
+      },
+      "mapboxAccessToken": "pk.eyJ1IjoidmluaWNpdXNsZW1lcyIsImEiOiJjbWl4ZTBnb2cwMzM1M2VvY2lqdzZtOXc1In0.jn7iH1oAzIqI_oCywaaIUA"
     }
   }
 }

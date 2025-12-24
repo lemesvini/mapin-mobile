@@ -34,4 +34,17 @@ export const authService = {
     });
     return response.data.user;
   },
+
+  /**
+   * Update current user profile
+   */
+  async updateProfile(data: {
+    bio?: string;
+    profilePictureUrl?: string;
+    fullName?: string;
+    instagramUsername?: string;
+  }): Promise<User> {
+    const response = await api.patch<{ user: User }>("/auth/me", data);
+    return response.data.user;
+  },
 };

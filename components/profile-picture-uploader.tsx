@@ -37,19 +37,13 @@ export const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
   onImageUploaded,
   size = 120,
 }) => {
-  const { uploading, progress, pickAndUploadImage, takePhotoAndUpload } =
-    useMediaUpload();
+  const { uploading, progress, showImagePicker } = useMediaUpload();
   const [localImageUrl, setLocalImageUrl] = useState(currentImageUrl);
-  const [showOptions, setShowOptions] = useState(false);
 
-  const handleUploadComplete = (url: string) => {
-    setLocalImageUrl(url);
-    setShowOptions(false);
-    onImageUploaded?.(url);
-  };
+  const handleImagePress = async () => {
+    if (uploading) return;
 
-  const handleGalleryUpload = async () => {
-    const result = await pickAndUploadImage({
+    const result = await showImagePicker({
       bucket: STORAGE_CONFIG.BUCKET,
       folder: STORAGE_CONFIG.FOLDERS.PROFILES,
       allowsEditing: true,
@@ -58,21 +52,8 @@ export const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
     });
 
     if (result) {
-      handleUploadComplete(result.url);
-    }
-  };
-
-  const handleCameraUpload = async () => {
-    const result = await takePhotoAndUpload({
-      bucket: STORAGE_CONFIG.BUCKET,
-      folder: STORAGE_CONFIG.FOLDERS.PROFILES,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.9,
-    });
-
-    if (result) {
-      handleUploadComplete(result.url);
+      setLocalImageUrl(result.url);
+      onImageUploaded?.(result.url);
     }
   };
 
@@ -98,7 +79,7 @@ export const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
     <View className="items-center">
       {/* Profile Picture Circle */}
       <TouchableOpacity
-        onPress={() => !uploading && setShowOptions(!showOptions)}
+        onPress={handleImagePress}
         disabled={uploading}
         style={{ width: size, height: size }}
         className="relative"
@@ -143,50 +124,17 @@ export const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
         )}
       </TouchableOpacity>
 
-      {/* Upload Options */}
-      {showOptions && !uploading && (
-        <View className="mt-4 w-full max-w-xs">
-          <TouchableOpacity
-            onPress={handleGalleryUpload}
-            className="flex-row items-center justify-center py-3 px-4 bg-blue-600 dark:bg-blue-500 rounded-xl mb-2"
-          >
-            <Ionicons name="images-outline" size={20} color="white" />
-            <ThemedText className="ml-2 text-white font-semibold">
-              Escolher da Galeria
-            </ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleCameraUpload}
-            className="flex-row items-center justify-center py-3 px-4 bg-green-600 dark:bg-green-500 rounded-xl mb-2"
-          >
-            <Ionicons name="camera-outline" size={20} color="white" />
-            <ThemedText className="ml-2 text-white font-semibold">
-              Tirar Foto
-            </ThemedText>
-          </TouchableOpacity>
-
-          {localImageUrl && (
-            <TouchableOpacity
-              onPress={handleRemoveImage}
-              className="flex-row items-center justify-center py-3 px-4 bg-red-600 dark:bg-red-500 rounded-xl mb-2"
-            >
-              <Ionicons name="trash-outline" size={20} color="white" />
-              <ThemedText className="ml-2 text-white font-semibold">
-                Remover Foto
-              </ThemedText>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            onPress={() => setShowOptions(false)}
-            className="flex-row items-center justify-center py-2 px-4"
-          >
-            <ThemedText className="text-black/60 dark:text-white/60">
-              Cancelar
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
+      {/* Remove Image Button */}
+      {localImageUrl && !uploading && (
+        <TouchableOpacity
+          onPress={handleRemoveImage}
+          className="mt-4 flex-row items-center justify-center py-2 px-4 bg-red-600 dark:bg-red-500 rounded-xl"
+        >
+          <Ionicons name="trash-outline" size={18} color="white" />
+          <ThemedText className="ml-2 text-white font-semibold text-sm">
+            Remover Foto
+          </ThemedText>
+        </TouchableOpacity>
       )}
     </View>
   );
