@@ -1,7 +1,5 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
-  View,
-  Text,
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -9,21 +7,41 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/auth.context';
-import { StatusBar } from 'expo-status-bar';
+  View,
+  Image,
+  useColorScheme,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/contexts/auth.context";
+import { StatusBar } from "expo-status-bar";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
+  const colorScheme = useColorScheme();
+  const iconColor = useThemeColor({}, "icon");
+  const borderColor = useThemeColor(
+    { light: "#D1D5DB", dark: "#374151" },
+    "icon"
+  );
+  const tintColor = useThemeColor({}, "tint");
+  const mapinIcon =
+    colorScheme === "dark"
+      ? require("@/assets/images/mapin-icon-dark.png")
+      : require("@/assets/images/mapin-transparent-light.png");
+  const isDark = colorScheme === "dark";
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
@@ -32,110 +50,158 @@ export default function LoginScreen() {
       await login({ email, password });
       // Navigation will be handled automatically by the root layout
     } catch (error: any) {
-      Alert.alert('Login Failed', error.message || 'Invalid credentials');
+      Alert.alert("Login Failed", error.message || "Invalid credentials");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white dark:bg-gray-900"
-    >
+    <ThemedView className="flex-1">
       <StatusBar style="auto" />
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1"
       >
-        <View className="flex-1 justify-center px-6 py-12">
-          {/* Header */}
-          <View className="mb-8">
-            <Text className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              Welcome Back
-            </Text>
-            <Text className="text-lg text-gray-600 dark:text-gray-400">
-              Sign in to continue to Mapin
-            </Text>
-          </View>
-
-          {/* Form */}
-          <View className="space-y-4">
-            {/* Email Input */}
-            <View>
-              <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email
-              </Text>
-              <TextInput
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
-                placeholder="Enter your email"
-                placeholderTextColor="#9CA3AF"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoComplete="email"
-                editable={!isLoading}
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="flex-1 justify-center px-6 py-12">
+            {/* Header */}
+            <View className="items-center mb-10">
+              <Image
+                source={mapinIcon}
+                style={{ width: 80, height: 80, marginBottom: 16 }}
+                resizeMode="contain"
               />
+              <ThemedText type="title" className="mb-2">
+                MAPIN
+              </ThemedText>
+              {/* <ThemedText type="subtitle" style={{ opacity: 0.7 }}>
+                Bem-vindo de volta, entre para continuar
+              </ThemedText> */}
             </View>
 
-            {/* Password Input */}
-            <View>
-              <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Password
-              </Text>
-              <TextInput
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
-                placeholder="Enter your password"
-                placeholderTextColor="#9CA3AF"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="password"
-                editable={!isLoading}
-              />
+            {/* Form */}
+            <View className="space-y-4">
+              {/* Email Input */}
+              <View className="mb-4">
+                <ThemedText
+                  type="defaultSemiBold"
+                  style={{ marginBottom: 8, opacity: 0.8 }}
+                >
+                  Email
+                </ThemedText>
+                <View
+                  className="flex-row items-center justify-center rounded-lg px-4 py-3"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: borderColor,
+                  }}
+                >
+                  <Ionicons name="mail-outline" size={20} color={iconColor} />
+                  <TextInput
+                    placeholder="Digite seu email"
+                    className="flex-1 ml-3"
+                    style={{ color: isDark ? "white" : "black", fontSize: 16 }}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoComplete="email"
+                    editable={!isLoading}
+                  />
+                </View>
+              </View>
+
+              {/* Password Input */}
+              <View>
+                <ThemedText
+                  type="defaultSemiBold"
+                  style={{ marginBottom: 8, opacity: 0.8 }}
+                >
+                  Senha
+                </ThemedText>
+                <View
+                  className="flex-row items-center rounded-lg px-4 py-3"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: borderColor,
+                  }}
+                >
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color={iconColor}
+                  />
+                  <TextInput
+                    className="flex-1 ml-3"
+                    style={{ color: isDark ? "white" : "black", fontSize: 16 }}
+                    placeholder="Digite sua senha"
+                    placeholderTextColor={iconColor}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoComplete="password"
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
+                    className="ml-2"
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-outline" : "eye-off-outline"}
+                      size={20}
+                      color={iconColor}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Login Button */}
+              <TouchableOpacity
+                className="w-full py-4 rounded-lg mt-6"
+                style={{
+                  backgroundColor: tintColor,
+                  opacity: isLoading ? 0.7 : 1,
+                }}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <ThemedText
+                    className="text-center font-semibold text-lg"
+                    style={{ color: isDark ? "#000000" : "#FFFFFF" }}
+                  >
+                    Entrar
+                  </ThemedText>
+                )}
+              </TouchableOpacity>
+
+              {/* Register Link */}
+              <TouchableOpacity
+                onPress={() => router.push("/(auth)/register")}
+                disabled={isLoading}
+                className="mt-6"
+              >
+                <ThemedText className="text-center" style={{ opacity: 0.7 }}>
+                  Não tem uma conta?{" "}
+                  <ThemedText
+                    type="defaultSemiBold"
+                    style={{ color: tintColor }}
+                  >
+                    Crie sua conta
+                  </ThemedText>
+                </ThemedText>
+              </TouchableOpacity>
             </View>
-
-            {/* Login Button */}
-            <TouchableOpacity
-              className={`w-full py-4 bg-blue-600 rounded-lg mt-6 ${
-                isLoading ? 'opacity-70' : ''
-              }`}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-white text-center font-semibold text-lg">
-                  Sign In
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View className="flex-row items-center my-6">
-              <View className="flex-1 h-px bg-gray-300 dark:bg-gray-700" />
-              <Text className="px-4 text-gray-500 dark:text-gray-400">or</Text>
-              <View className="flex-1 h-px bg-gray-300 dark:bg-gray-700" />
-            </View>
-
-            {/* Register Link */}
-            <TouchableOpacity
-              onPress={() => router.push('/(auth)/register')}
-              disabled={isLoading}
-            >
-              <Text className="text-center text-gray-600 dark:text-gray-400">
-                Don't have an account?{' '}
-                <Text className="text-blue-600 dark:text-blue-400 font-semibold">
-                  Sign Up
-                </Text>
-              </Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ThemedView>
   );
 }
-

@@ -32,6 +32,21 @@ export const userService = {
   },
 
   /**
+   * Check if username is available
+   */
+  checkUsernameAvailability: async (username: string): Promise<boolean> => {
+    try {
+      await api.get(`/users/${username}`);
+      return false; // Username exists
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return true; // Username is available
+      }
+      throw error; // Re-throw other errors
+    }
+  },
+
+  /**
    * Follow a user
    */
   followUser: async (userId: string): Promise<FollowResponse> => {
