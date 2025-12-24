@@ -8,7 +8,7 @@
 
 export const API_CONFIG = {
   // Change this based on your environment
-  BASE_URL: "http://localhost:3333",
+  BASE_URL: "https://mapin-api-production-2f0a.up.railway.app",
   // ? "http://localhost:3333"
   // :  ? "http://localhost:3333" // Local development
   //   "https://mapin-api-production-2f0a.up.railway.app", // Production
