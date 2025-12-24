@@ -16,7 +16,6 @@ export default function HomeScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchPinsAndLocation() {
@@ -28,7 +27,6 @@ export default function HomeScreen() {
         // Get user location
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
-          setLocationError("Location permission denied");
           setLoading(false);
           return;
         }
@@ -38,17 +36,13 @@ export default function HomeScreen() {
           longitude: location.coords.longitude,
         });
       } catch (err) {
-        let errorMsg = "Failed to fetch pins or location";
-        if (typeof err === "string") errorMsg = err;
-        else if (err && typeof err === "object" && "message" in err)
-          errorMsg = (err as any).message;
-        setLocationError(errorMsg);
+        console.error("Failed to fetch pins or location:", err);
       } finally {
         setLoading(false);
       }
     }
     fetchPinsAndLocation();
-  }, []);
+  }, [api.pins]);
 
   if (loading) {
     return (
